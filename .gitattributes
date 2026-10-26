@@ -1,0 +1,4 @@
+*.step binary linguist-generated
+*.png  binary
+*.jpg  binary
+*.pdf  binary

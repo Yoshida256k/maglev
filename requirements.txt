@@ -1,0 +1,6 @@
+# 動作確認した版（2026-10）
+cadquery==2.8.0
+vtk==9.6.2
+matplotlib==3.11.2
+reportlab==5.0.1
+pillow==12.3.0
