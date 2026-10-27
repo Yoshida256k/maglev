@@ -26,6 +26,7 @@
 リニアモーターカー仕様書.md        要求仕様 v0.3（第一案ベース。ファーム生成の元）
 ソフトウェア設計/
   現行ソフトウェア仕様書.md        picofunc の現行実装と要求仕様の差分
+  picofunc/                       インバーター信号源（YD-RP2040）のファームウェアと操作アプリ（picofunc の履歴ごと）
   hall_pattern_check.py           ホール IC の配置と台車の磁極で絶対位置が一意に決まるかの確認
 ハードウェア設計/
   インバータの回路図.jpg
@@ -66,4 +67,5 @@ python check_clearance.py             # 干渉チェック
 
 ## 関連
 
-- インバーター信号源（YD-RP2040）のファームウェアと操作アプリ：https://github.com/Arobberwhothreatenswithpunch/picofunc
+- インバーター信号源（YD-RP2040）のファームウェアと操作アプリ：`ソフトウェア設計/picofunc/`（元のリポジトリ：https://github.com/Arobberwhothreatenswithpunch/picofunc）
+- 操作アプリ（PWA）：https://arobberwhothreatenswithpunch.github.io/picofunc/
