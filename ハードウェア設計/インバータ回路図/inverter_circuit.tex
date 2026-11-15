@@ -1,0 +1,135 @@
+% 浮いてるミニ四駆：駆動回路（電源・インバーター・区間コイル）
+% ビルド: lualatex inverter_circuit.tex
+\documentclass[border=8pt]{standalone}
+\usepackage{luatexja-fontspec}
+\setmainjfont{Noto Sans CJK JP}
+\setsansjfont{Noto Sans CJK JP}
+\usepackage[RPvoltages]{circuitikz}
+\usetikzlibrary{calc, backgrounds}
+
+\definecolor{dg}{HTML}{4E7360}   % スライドの深緑
+\definecolor{lg}{HTML}{7A968A}   % 補助線
+
+\ctikzset{
+  bipoles/thickness=1.2,
+  tripoles/thickness=1.2,
+  diodes/scale=0.65,
+  bipoles/fuse/width=0.5,
+  bipoles/fuse/height=0.18,
+}
+
+\newcommand{\lbl}[1]{{\sffamily\footnotesize #1}}
+\newcommand{\ttl}[1]{{\sffamily\small\bfseries #1}}
+
+\begin{document}
+\begin{circuitikz}[color=dg, line width=0.8pt, font=\sffamily]
+
+%==================== ① 電源部 ====================
+% 商用電源 → F1 → スライダック（電圧調整）→ 絶縁トランス
+\draw (0,1) to[sV, l=\lbl{AC 100 V}] (0,5)
+      to[fuse, l=$F_1$] (2.6,5)
+      to[L, l_=\lbl{スライダック}] (2.6,1) -- (0,1);
+\draw (5.0,3.0) node[transformer core, scale=0.9] (T) {};
+\draw[-latex] (3.9,3.6) -- (2.95,3.6);
+\draw (3.9,3.6) |- (T.A1);
+\draw (2.6,1) -| (T.A2);
+\node[above] at (T.north) {\lbl{絶縁トランス}};
+
+% 全波整流（ダイオードブリッジ）
+\draw (7.6,0) to[D*] (7.6,1.5) -- (7.6,0 |- T.B1) to[D*] (7.6,6);
+\draw (9.0,0) to[D*] (9.0,0 |- T.B2) to[D*] (9.0,6);
+\draw (T.B1) -- (7.6,0 |- T.B1) node[circ]{};
+\draw (T.B2) -- (7.6,0 |- T.B2) node[jump crossing] (J0) {};
+\draw (J0.east) -- (9.0,0 |- T.B2) node[circ]{};
+
+% 直流母線（P: 上, N: 下）
+\draw (7.6,6) -- (9.0,6) node[circ]{} -- (10.4,6) node[circ]{} -- (11.8,6) node[circ]{};
+\draw (7.6,0) -- (9.0,0) node[circ]{} -- (10.4,0) node[circ]{} -- (11.8,0) node[circ]{};
+\draw (10.4,6) to[eC, l_=$C$] (10.4,0);
+\draw (11.8,6) to[voltmeter, l=\lbl{$V_\mathrm{DC}$}] (11.8,0);
+% 直流母線のヒューズとシャント（過電流検出）
+\draw (11.8,6) to[fuse, l=$F_2$] (13.6,6);
+\draw (13.6,0) to[R, l=$R_\mathrm{s}$, a=\lbl{過電流検出へ}] (11.8,0);
+\node[align=center, anchor=north] at (5.6,-0.5) {\ttl{① 電源部}\\[-1pt]\lbl{DC 24 V（最大 30 V）}};
+
+%==================== ② 3相インバーター ====================
+\foreach \x/\ph in {14.8/U, 17.2/V, 19.6/W}{
+  \draw (\x,6) -- (\x,5.8) node[nigbt, anchor=C] (QH\ph) {};
+  \draw (QH\ph.E) -- ++(0.7,0) to[D*] ($(QH\ph.C)+(0.7,0)$) -- (QH\ph.C);
+  \draw (\x,1.9) node[nigbt, anchor=C] (QL\ph) {};
+  \draw (QL\ph.E) -- ++(0.7,0) to[D*] ($(QL\ph.C)+(0.7,0)$) -- (QL\ph.C);
+  \draw (QL\ph.E) -- (\x,0);
+  \draw (QH\ph.E) -- (QL\ph.C);
+  \node[left] at (QH\ph.G) {\lbl{\ph\textsubscript{H}}};
+  \node[left] at (QL\ph.G) {\lbl{\ph\textsubscript{L}}};
+}
+\draw (13.6,6) -- (14.8,6) node[circ]{} -- (17.2,6) node[circ]{} -- (19.6,6);
+\draw (13.6,0) -- (14.8,0) node[circ]{} -- (17.2,0) node[circ]{} -- (19.6,0);
+
+% 出力線（他相の脚はジャンプで越える：接続しない）
+\draw (14.8,3.6) node[circ]{} -- (17.2,3.6) node[jump crossing] (JU1) {};
+\draw (JU1.east) -- (19.6,3.6) node[jump crossing] (JU2) {};
+\draw (JU2.east) -- (21.4,3.6) node[right]{\ttl{U}};
+\draw (17.2,3.0) node[circ]{} -- (19.6,3.0) node[jump crossing] (JV1) {};
+\draw (JV1.east) -- (21.4,3.0) node[right]{\ttl{V}};
+\draw (19.6,2.4) node[circ]{} -- (21.4,2.4) node[right]{\ttl{W}};
+\node[align=center, anchor=north] at (17.4,-0.5) {\ttl{② 3相インバーター}\\[-1pt]\lbl{IGBT ×6・ゲートドライバ IR2104 ×3}};
+
+%==================== ③ 区間コイル（10区間のうち2つを表示） ====================
+\def\busend{32.8}
+\foreach \y in {3.6, 3.0, 2.4}{
+  \draw (22.2,\y) -- (\busend,\y);
+  \draw[dashed] (\busend,\y) -- ++(0.8,0);
+}
+\node[right] at (\busend+0.8,3.0) {\lbl{区間10まで}};
+
+\foreach \sx/\k in {23.0/1, 28.2/k}{
+  % U相・V相はリレー接点、W相は常時接続
+  \draw (\sx,3.6) node[circ]{} -- (\sx,3.0) node[jump crossing, rotate=-90] (a) {};
+  \draw (a.east) -- (\sx,2.4) node[jump crossing, rotate=-90] (b) {};
+  \draw (b.east) -- (\sx,1.9) to[nos] (\sx,0.6) to[L] (\sx,-1.4);
+  \draw (\sx+1.4,3.0) node[circ]{} -- (\sx+1.4,2.4) node[jump crossing, rotate=-90] (c) {};
+  \draw (c.east) -- (\sx+1.4,1.9) to[nos] (\sx+1.4,0.6) to[L] (\sx+1.4,-1.4);
+  \draw (\sx+2.8,2.4) node[circ]{} -- (\sx+2.8,0.6) to[L] (\sx+2.8,-1.4);
+  % 中性点（区間内で閉じ、他の区間と共有しない）
+  \draw (\sx,-1.4) -- (\sx,-1.9) -- (\sx+2.8,-1.9) -- (\sx+2.8,-1.4);
+  \draw (\sx+1.4,-1.4) -- (\sx+1.4,-1.9) node[circ]{};
+  % 2極リレー（U・V を同時に開閉）
+  \draw[lg, dashed, line width=0.6pt] (\sx+0.35,1.25) -- (\sx+1.75,1.25);
+  \node[right] at (\sx+1.75,1.25) {\lbl{RY\textsubscript{\k}}};
+  \node[anchor=north] at (\sx+1.4,-2.0) {\lbl{区間\,\k（Y結線）}};
+}
+\node[align=center, anchor=north] at (27.8,-2.9) {\ttl{③ 区間コイル}\\[-1pt]\lbl{各相 = コイル2個直列}};
+
+%==================== ④ 区間スイッチの代替案（MOSFET） ====================
+\begin{scope}[shift={(17.0,-6.2)}]
+  \draw (0,2.5) node[ocirc]{} node[left]{\lbl{母線側}} -- (0,2.2) node[nmos, bodydiode, anchor=D] (MA) {};
+  \draw (MA.S) -- (0,0.3) node[circ] (S) {};
+  \draw (0,0.3) node[nmos, bodydiode, yscale=-1, anchor=S] (MB) {};
+  \draw (MB.D) -- (0,-1.9) node[ocirc]{} node[left]{\lbl{コイル側}};
+  % ゲートはまとめて駆動、ソースは共通
+  \draw (MA.G) -- ++(-0.6,0) coordinate (g1);
+  \draw (MB.G) -- ++(-0.6,0) coordinate (g2);
+  \draw (g1) -- (g2);
+  \node[draw, rectangle, minimum width=1.7cm, minimum height=1.6cm, align=center, anchor=east] (DRV) at ($(g1)!0.5!(g2)+(-1.0,0)$) {\lbl{VOM1271}\\[-2pt]{\sffamily\scriptsize 光起電力型}};
+  \draw (g1) node[circ]{} -- (g1 -| DRV.east);
+  \node[above right, font=\sffamily\scriptsize] at (g1 -| DRV.east) {$+$};
+  \draw (S) -- ($(S)!0.5!(S -| g1)$) coordinate (sm);
+  \draw (sm) -- (S -| g1) node[jump crossing] (JS) {};
+  \draw (JS.west) -- (S -| DRV.east);
+  \node[above right, font=\sffamily\scriptsize] at (S -| DRV.east) {$-$};
+  % 保護：双方向TVS と RC スナバ
+  \draw (0,2.3) node[circ]{} -- (1.4,2.3) node[circ]{} -- (4.0,2.3);
+  \draw (0,-1.7) node[circ]{} -- (1.4,-1.7) node[circ]{} -- (4.0,-1.7);
+  \draw (1.4,2.3) to[tvsD, l=\lbl{双方向 TVS}] (1.4,-1.7);
+  \draw (4.0,2.3) to[R] (4.0,0.3) to[C] (4.0,-1.7);
+  \node[right] at (4.2,0.3) {\lbl{RC スナバ}};
+\end{scope}
+\begin{scope}[on background layer]
+  \draw[lg, dashed, line width=0.6pt, rounded corners=6pt] (12.2,-3.1) rectangle (23.2,-8.6);
+\end{scope}
+\node[align=center, anchor=north] at (17.7,-8.7) {\ttl{④ 区間スイッチの代替案}\\[-1pt]\lbl{MOSFET 双方向スイッチ（リレーの代わり）}};
+\draw[lg, dashed, line width=0.6pt, -latex] (22.7,1.2) .. controls (22.0,0.0) and (22.6,-2.6) .. (22.6,-3.0);
+
+\end{circuitikz}
+\end{document}
