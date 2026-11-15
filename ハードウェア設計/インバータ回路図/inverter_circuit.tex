@@ -1,0 +1,94 @@
+\documentclass[border=8pt]{standalone}
+\usepackage{luatexja}
+\usepackage{amsmath}
+\usepackage[european]{circuitikz}
+\begin{document}
+\begin{circuitikz}[line width=0.7pt, font=\small]
+
+% ================= AC 電源・可変変圧器・ヒューズ・整流 =================
+\draw (2.6,-5.05) to[vsourcesin] (2.6,-2.8);
+\node[font=\footnotesize] at (2.6,-5.45) {AC 電源};
+\draw (2.6,-2.8) -- (4.2,-2.8);
+\draw (4.2,-2.8) to[cute inductor] (4.2,-5.05);
+\node[font=\footnotesize, below] at (4.5,-5.1) {可変変圧器};
+\draw (2.6,-5.05) -- (4.2,-5.05);
+\draw[-{Stealth[length=2.2mm]}] (4.9,-3.8) -- (4.32,-3.8);
+\draw (4.9,-3.8) -- (5.3,-3.8) to[fuse, l=$F$] (5.9,-3.8) -- (6.37,-3.8) node[circ]{};
+
+\draw (6.37,-3.8) to[D] (6.37,-2.15);
+\draw (6.37,-6.9) to[D] (6.37,-5.5) -- (6.37,-3.8);
+\draw (7.42,-5.05) to[D] (7.42,-2.15);
+\draw (7.42,-6.9) to[D] (7.42,-5.05);
+\draw (4.2,-5.05) -- (7.42,-5.05) node[circ]{};
+\node[left] at (6.2,-2.15) {$P$ (+)};
+\node[left] at (6.2,-6.9) {$N$ ($-$)};
+
+% ================= DC 母線：シャント・平滑コンデンサ =================
+\draw (6.37,-2.15) -- (8.2,-2.15) node[circ]{};
+\draw (8.2,-2.15) to[R, l=$R_{\rm sh}$] (9.2,-2.15);
+\draw (9.2,-2.15) -- (13.7,-2.15);
+\draw (8.2,-2.15) -- (8.2,-1.2) to[voltmeter, l=$V_{\rm sh}$] (9.2,-1.2) -- (9.2,-2.15);
+\draw (8.2,-2.15) -- (8.2,-3.55);
+\draw (8.2,-3.55) to[elko, l_=$C_{\rm dc}$] (8.2,-4.75);
+\draw (8.2,-4.75) -- (8.2,-6.9) node[circ]{};
+\draw (8.2,-3.55) node[circ]{} -- (9.5,-3.55) to[voltmeter, l=$V_{\rm dc}$] (9.5,-4.75) -- (8.2,-4.75) node[circ]{};
+\draw (6.37,-6.9) -- (13.7,-6.9);
+
+% ================= 三相インバータ（上下 IGBT ＋ 還流ダイオード）=================
+\foreach \x/\nm/\yo in {10.3/U/-3.62, 12.0/V/-4.3, 13.7/W/-4.7} {
+  \node[nigbt] (\nm H) at (\x,-2.75) {};
+  \node[nigbt] (\nm L) at (\x,-5.6) {};
+  \draw (\x,-2.15) -- (\nm H.C);
+  \draw (\nm H.E) -- (\x,\yo) node[circ]{};
+  \draw (\x,\yo) -- (\nm L.C);
+  \draw (\nm L.E) -- (\x,-6.9);
+  \draw (\x,-3.35) -- (\x+0.5,-3.35) to[D] (\x+0.5,-2.15) -- (\x,-2.15);
+  \draw (\x,-6.2) -- (\x+0.5,-6.2) to[D] (\x+0.5,-5.0) -- (\x,-5.0);
+}
+\node[font=\scriptsize, align=left] at (11.2,-7.55) {$G_{\rm UH}$～$G_{\rm WL}$：IGBT ゲート信号（絶縁ドライバより）};
+\node[font=\small] at (14.6,-0.5) {三相インバータ（IGBT 6 個＋還流ダイオード）};
+
+% ================= 出力 U・V・W → モータ母線 =================
+\draw (10.3,-3.62) -- (21.2,-3.62) node[right]{$U$};
+\draw (12.0,-4.3) -- (15.0,-4.3) -- (15.0,-7.45) -- (21.2,-7.45) node[right]{$V$};
+\draw (13.7,-4.7) -- (14.6,-4.7) -- (14.6,-8.0) -- (21.2,-8.0) node[right]{$W$};
+
+% ================= コイル群（Y 結線）＋ リレー（区間切替）=================
+\newcommand{\ssr}[3]{%  x, y_top, y_bottom
+  \draw (#1,#2) -- (#1,#2+0.25);
+  \draw (#1-0.3,#2+0.25) rectangle (#1+0.3,#2-0.55);
+  \draw (#1-0.13,#2-0.02) -- (#1+0.13,#2-0.28);
+  \draw (#1,#2-0.55) -- (#1,#3) node[circ]{};
+}
+\foreach \sx/\lab in {16.2/1, 19.0/2} {
+  \draw (\sx,-3.62) node[circ]{} -- (\sx,-4.6) to[cute inductor] (\sx,-4.6) ;
+  \node[circ] at (\sx,-4.6) {};
+  \draw (\sx,-4.6) -- (\sx-0.6,-4.6) to[cute inductor] (\sx-0.6,-5.6);
+  \draw (\sx,-4.6) -- (\sx+0.9,-4.6) to[cute inductor] (\sx+0.9,-5.6);
+  \ssr{\sx-0.6}{-5.6}{-7.45}
+  \ssr{\sx+0.9}{-5.6}{-8.0}
+  \node at (\sx+0.15,-1.3) {コイル群 \lab};
+}
+\node at (20.5,-5.6) {$\cdots$};
+
+% ================= 代表リレー 1 個分の駆動・保護回路 =================
+\node at (13.0,-8.8) {代表 1 個分（各リレーに同じ回路）};
+\draw (10.5,-9.9) rectangle (12.3,-11.9);
+\node[align=center, font=\scriptsize] at (11.4,-10.9) {双方向\\スイッチ\\(VOM1271 等)};
+\draw (11.4,-9.4) -- (11.4,-9.9);
+\draw (11.4,-11.9) -- (11.4,-12.6);
+\draw[-{Stealth[length=1.8mm]}] (9.4,-10.9) -- (10.5,-10.9);
+\node[font=\scriptsize, above] at (9.9,-10.9) {制御入力};
+\draw (11.4,-9.4) -- (14.6,-9.4);
+\draw (11.4,-12.6) -- (14.6,-12.6);
+\draw (13.2,-9.4) node[circ]{} to[zzD, l=TVS] (13.2,-12.6) node[circ]{};
+\draw (14.6,-9.4) node[circ]{} to[R, l=$R_s$] (14.6,-10.9) to[C, l=$C_s$] (14.6,-12.6) node[circ]{};
+\node[font=\scriptsize, right] at (14.8,-11.3) {RC スナバ};
+\node[font=\scriptsize, above] at (11.4,-9.4) {X};
+\node[font=\scriptsize, below] at (11.4,-12.6) {Y};
+
+% ================= 注記 =================
+\node[align=left, anchor=west] at (16.2,-10.6) {$P = P_{\rm total} \times \dfrac{1.5}{n}$\\[4pt] $n$：分割数};
+
+\end{circuitikz}
+\end{document}
